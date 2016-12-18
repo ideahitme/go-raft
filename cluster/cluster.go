@@ -1,22 +1,20 @@
-package pkg
+package cluster
 
 import "math/rand"
+import "github.com/ideahitme/go-raft/server"
 
-// Leader current leader of the cluster
-var Leader *Node
-var Cluster []*Node
+var client server.Client
 
-func getClusterSize() uint16 {
-	return uint16(len(Cluster))
+func init() {
+	client := server.NewClient()
 }
 
-func minAcceptSize() uint16 {
-	return getClusterSize()/2 + 1
+func (s *State) getClusterSize() uint16 {
+	return uint16(len(s.nodes))
 }
 
-func sendVoteRequest(n *Node) bool {
-	//send http request to the Node
-	return true
+func (s *State) minAcceptSize() uint16 {
+	return s.getClusterSize()/2 + 1
 }
 
 func getElectionTimeout() int32 {
@@ -25,10 +23,10 @@ func getElectionTimeout() int32 {
 }
 
 // RequestVote candidate request for votes to become a leader
-func RequestVote() {
+func (s *State) RequestVote() {
 	reqChannel := make(chan bool)
 
-	for _, node := range Cluster {
+	for _, node := range s.nodes {
 		node := node
 		go func() {
 			reqChannel <- sendVoteRequest(node)
@@ -37,24 +35,24 @@ func RequestVote() {
 
 	var accepted uint16 = 1 // Node votes for itself
 	var i uint16
-	for i = 0; i < getClusterSize(); i++ {
+	for i = 0; i < s.getClusterSize(); i++ {
 		if accept := <-reqChannel; accept {
 			accepted++
 		}
 	}
 
-	if accepted >= minAcceptSize() {
-		if isLeader := ClaimLeadership(); isLeader {
+	if accepted >= s.minAcceptSize() {
+		if isLeader := s.ClaimLeadership(); isLeader {
 
 		}
 	}
 }
 
 // ClaimLeadership send request to all nodes to claim a leadership
-func ClaimLeadership() bool {
+func (s *State) ClaimLeadership() bool {
 	claimChannel := make(chan bool)
 
-	for _, node := range Cluster {
+	for _, node := range s.nodes {
 		node := node
 		go func() {
 			claimChannel <- sendVoteRequest(node)
@@ -63,13 +61,13 @@ func ClaimLeadership() bool {
 
 	var accepted uint16 = 1 // Node votes for itself
 	var i uint16
-	for i = 0; i < getClusterSize(); i++ {
+	for ; i < s.getClusterSize(); i++ {
 		if accept := <-claimChannel; accept {
 			accepted++
 		}
 	}
 
-	if accepted >= minAcceptSize() {
+	if accepted >= s.minAcceptSize() {
 		return true
 	}
 	return false

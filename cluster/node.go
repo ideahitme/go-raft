@@ -1,4 +1,4 @@
-package pkg
+package cluster
 
 // State current state of a node
 type NodeState uint8

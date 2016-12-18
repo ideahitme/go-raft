@@ -1,8 +1,10 @@
-package pkg
+package cluster
 
 type State struct {
 	node   *Node
 	leader *Node
+	nodes  []*Node
+	term   *uint32
 }
 
 func NewState() *State {
