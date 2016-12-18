@@ -11,7 +11,7 @@ a client interacting with one of the machines (leader), and sending a request to
 2. Candidate - node ready to become a leader
 3. Leader - current master of the cluster
 
-## Prinicipal of work
+## Priniciples of work
 
 ### Leader election
 
