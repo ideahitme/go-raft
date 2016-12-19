@@ -1,6 +1,6 @@
-package cluster
+package pkg
 
-// State current state of a node
+// NodeState state current state of a node
 type NodeState uint8
 
 // IP address of the node
@@ -15,14 +15,14 @@ const (
 
 // Node corresponds to the machine
 type Node struct {
-	state   NodeState
-	address IP
+	State   NodeState
+	Address IP
 }
 
 // NewNode create a new Node pointer
 func NewNode(ip IP) *Node {
 	return &Node{
-		state:   FollowerState,
-		address: ip,
+		State:   FollowerState,
+		Address: ip,
 	}
 }

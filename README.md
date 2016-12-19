@@ -30,7 +30,13 @@ Each node gets a random value between `150ms` to `300ms`.
 a node will strive to become a candidate.  
 
 After the `election` timeout a `follower` become a `candidate` and starts a new 
-`election term`. 
+`election term`. To start a campaign a node must send the list of its last committed logs and the current term. 
+If the voters find the last commit or the latest term to be unreliable they will reject the node. Otherwise they will vote for the node.
+
+In case if two nodes get the same number of votes, the voting will be restarted automatically (on `election` timeout). Due to 
+random length of the timeout collisions will stop occuring.
+
+
 
 ### Log replication
 

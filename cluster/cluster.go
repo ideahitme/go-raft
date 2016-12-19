@@ -1,73 +1,94 @@
 package cluster
 
-import "math/rand"
-import "github.com/ideahitme/go-raft/server"
+import "github.com/ideahitme/go-raft/pkg"
+import "github.com/ideahitme/go-raft/listener"
+import "fmt"
+import "time"
 
-var client server.Client
-
-func init() {
-	client := server.NewClient()
+type Cluster struct {
+	cluster  []*pkg.Node
+	node     *pkg.Node
+	client   *HTTPClient
+	listener *listener.Listener
 }
 
-func (s *State) getClusterSize() uint16 {
-	return uint16(len(s.nodes))
+func NewCluster(nodes []*pkg.Node, node *pkg.Node, listener *listener.Listener) *Cluster {
+	client := NewHTTPClient()
+	return &Cluster{
+		cluster:  nodes,
+		node:     node,
+		client:   client,
+		listener: listener,
+	}
 }
 
-func (s *State) minAcceptSize() uint16 {
-	return s.getClusterSize()/2 + 1
+func (c *Cluster) Run() {
+	select {
+	case <-c.listener.HeartbeatChannel:
+		fmt.Println("Got a heartbeat from the leader")
+	case <-time.After(BootTime):
+		fmt.Println("Time to become a leader")
+	}
 }
 
-func getElectionTimeout() int32 {
-	r := rand.Int31n(150) + 150
-	return r
+func (c *Cluster) ListenForHearbeat() {
+	for {
+		select {
+		case <-c.listener.HeartbeatChannel:
+
+		case <-time.After(HeartbeatTimeout):
+
+			break
+		}
+	}
 }
 
 // RequestVote candidate request for votes to become a leader
-func (s *State) RequestVote() {
+func (c *Cluster) RequestVote() {
 	reqChannel := make(chan bool)
 
-	for _, node := range s.nodes {
+	for _, node := range c.cluster {
 		node := node
 		go func() {
-			reqChannel <- sendVoteRequest(node)
+			reqChannel <- c.client.SendVoteRequest(node)
 		}()
 	}
 
 	var accepted uint16 = 1 // Node votes for itself
 	var i uint16
-	for i = 0; i < s.getClusterSize(); i++ {
+	for i = 0; i < c.getClusterSize(); i++ {
 		if accept := <-reqChannel; accept {
 			accepted++
 		}
 	}
 
-	if accepted >= s.minAcceptSize() {
-		if isLeader := s.ClaimLeadership(); isLeader {
+	if accepted >= c.minAcceptSize() {
+		if isLeader := c.ClaimLeadership(); isLeader {
 
 		}
 	}
 }
 
 // ClaimLeadership send request to all nodes to claim a leadership
-func (s *State) ClaimLeadership() bool {
+func (c *Cluster) ClaimLeadership() bool {
 	claimChannel := make(chan bool)
 
-	for _, node := range s.nodes {
+	for _, node := range c.cluster {
 		node := node
 		go func() {
-			claimChannel <- sendVoteRequest(node)
+			claimChannel <- c.client.SendVoteRequest(node)
 		}()
 	}
 
 	var accepted uint16 = 1 // Node votes for itself
 	var i uint16
-	for ; i < s.getClusterSize(); i++ {
+	for ; i < c.getClusterSize(); i++ {
 		if accept := <-claimChannel; accept {
 			accepted++
 		}
 	}
 
-	if accepted >= s.minAcceptSize() {
+	if accepted >= c.minAcceptSize() {
 		return true
 	}
 	return false
